@@ -6,7 +6,7 @@ import asyncio
 import cv2
 import httpx
 import numpy as np
-import azure_upload
+from live import azure_upload
 from live.camera import Camera
 
 logger = logging.getLogger(__name__)
@@ -57,9 +57,9 @@ class AlertCache:
         self,
         timestamp: datetime,
         aircraft: list[tuple],
+        annotated_img: np.ndarray | None,
         cam: Camera,
         config,
-        annotated_img: np.ndarray | None,
         image_url: str | None = None,
     ) -> None:
         time_str = timestamp.strftime("%H:%M:%S UTC")

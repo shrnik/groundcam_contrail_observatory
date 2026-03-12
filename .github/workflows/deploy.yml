@@ -37,7 +37,9 @@ jobs:
             --name $CONTAINER_NAME \
             --image $ACR_NAME.azurecr.io/$IMAGE:${{ github.sha }} \
             --registry-login-server $ACR_NAME.azurecr.io \
-            --acr-identity "[system]" \
+            --registry-username ${{ secrets.ACR_USERNAME }} \
+            --registry-password ${{ secrets.ACR_PASSWORD }} \
+            --os-type Linux \
             --cpu 1 --memory 2 \
             --restart-policy Always \
             --secure-environment-variables \
