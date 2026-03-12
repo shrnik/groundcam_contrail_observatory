@@ -1,0 +1,11 @@
+downloaded_images
+.venv
+images
+contrail_images
+__pycache__
+generated_data
+aging_output*
+GVCCS
+gvccs_output*
+arizona_images
+sam3_*
