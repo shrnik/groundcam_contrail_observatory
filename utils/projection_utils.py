@@ -30,7 +30,12 @@ def gps_to_camxy_vasha_fixed(lats, lons, alts, cam_k, cam_r, cam_t, camera_gps, 
 
     # CRITICAL FIX 1: Transform to camera coordinate system properly
     # Camera coordinates: X=right, Y=down, Z=forward (into scene)
-    points_cam = (cam_r @ enu_points.T + cam_t).T  # Shape: (N, 3)
+    # Only multiply finite points to avoid divide-by-zero/overflow warnings from NaN/inf ENU coords.
+    num_points = len(lats)
+    finite_mask = np.all(np.isfinite(enu_points), axis=1)
+    points_cam = np.full((num_points, 3), np.nan)
+    if np.any(finite_mask):
+        points_cam[finite_mask] = (cam_r @ enu_points[finite_mask].T + cam_t).T
 # # 2. Calculate normalized coordinates (u, v)
 # These represent the position on a flat plane 1 unit in front of the lens
     z_depth = points_cam[:, 2]
@@ -42,7 +47,6 @@ def gps_to_camxy_vasha_fixed(lats, lons, alts, cam_k, cam_r, cam_t, camera_gps, 
     # If the value is > 3.0, it's way outside the FOV and will cause distortion 'wrap-around'.
     fov_mask = (z_depth > 1.0) & (np.abs(u_norm) < 1.2) & (np.abs(v_norm) < 1.2)
 
-    num_points = len(lats)
     image_x = np.full(num_points, np.nan)
     image_y = np.full(num_points, np.nan)
     

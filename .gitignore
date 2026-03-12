@@ -1,3 +1,4 @@
+.env
 downloaded_images
 .venv
 images
@@ -9,3 +10,4 @@ GVCCS
 gvccs_output*
 arizona_images
 sam3_*
+live_output*
