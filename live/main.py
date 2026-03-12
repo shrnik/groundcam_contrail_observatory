@@ -75,18 +75,18 @@ async def main(config_path: str = "live/config.yaml") -> None:
                 results, annotated_img = processor.process_frame(
                     ts, image_bytes, pings, cam_params, config
                 )
-                image_url = None
-                if annotated_img is not None:
-                    frame_dir = os.path.join(output_dir, "frames", cam.side)
-                    os.makedirs(frame_dir, exist_ok=True)
-                    frame_path = os.path.join(frame_dir, ts.strftime("%Y%m%d_%H%M%S") + ".jpg")
-                    cv2.imwrite(frame_path, annotated_img)
+                # image_url = None
+                # if annotated_img is not None:
+                #     frame_dir = os.path.join(output_dir, "frames", cam.side)
+                #     os.makedirs(frame_dir, exist_ok=True)
+                #     frame_path = os.path.join(frame_dir, ts.strftime("%Y%m%d_%H%M%S") + ".jpg")
+                #     cv2.imwrite(frame_path, annotated_img)
                     # image_url = await asyncio.get_event_loop().run_in_executor(
                     #     None,
                     #     azure_upload.upload_annotated_frame,
                     #     annotated_img, ts, cam.side, config,
                     # )
-                await alert_cache.check(results, annotated_img, image_url)
+                await alert_cache.check(results, annotated_img, cam, config)
                 analytics.log(results, output_dir)
             await asyncio.sleep(interval)
 
