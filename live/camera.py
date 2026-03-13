@@ -2,6 +2,7 @@ import re
 import asyncio
 import logging
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 import httpx
 import pandas as pd
@@ -67,7 +68,7 @@ class Camera:
         """
         now_utc = datetime.now(timezone.utc)
         # convert to camera local date for directory path; timestamps in filenames are in local time
-        now_local = now_utc.astimezone(timezone(self.timezone))
+        now_local = now_utc.astimezone(ZoneInfo(self.timezone))
         url = self._build_dir_url(now_local)
         filenames = await self._list_directory(url)
 
