@@ -42,7 +42,7 @@ jobs:
             --os-type Linux \
             --cpu 2 --memory 4 \
             --restart-policy Always \
-            --secure-environment-variables \
+            --environment-variables \
               AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
               SLACK_WEBHOOK_URL="${{ secrets.SLACK_WEBHOOK_URL }}" \
             --azure-file-volume-account-name contrailimages \
