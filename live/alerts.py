@@ -72,11 +72,14 @@ class AlertCache:
             # fname = f"{timestamp.strftime('%Y%m%d_%H%M%S')}.jpg"
             # img_path = os.path.join(alerts_dir, fname)
             # cv2.imwrite(img_path, annotated_img)
-            image_url = await asyncio.get_event_loop().run_in_executor(
-                        None,
-                        azure_upload.upload_annotated_frame,
-                        annotated_img, timestamp, cam.side, config,
-                    )
+            try:
+                image_url = await asyncio.get_event_loop().run_in_executor(
+                            None,
+                            azure_upload.upload_annotated_frame,
+                            annotated_img, timestamp, cam.side, config,
+                        )
+            except Exception as e:
+                logger.warning(f"[alerts] failed to upload annotated image: {e}")
             logger.info(f"[alerts] saved annotated image to {img_path}")
 
         # --- Log to console ---
@@ -98,8 +101,6 @@ class AlertCache:
             f":airplane_arriving: *Contrail detected!*  *Time:* {time_str}\n"
             f"*{len(aircraft)} aircraft:*\n{aircraft_lines}"
         )
-        if img_path:
-            slack_text += f"\n*Image saved:* `{img_path}`"
 
         blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": slack_text}}]
         if image_url:

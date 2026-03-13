@@ -3,6 +3,7 @@ cameras:
     lon: -89.4069
     alt: 325.0
     side: east
+    timezone: "America/Chicago"
     params_path: calibration_data/uwisc/east/camera_params.json
     image_dir_base_url: "https://metobs.ssec.wisc.edu/pub/cache/aoss/cameras"
     poll_interval_s: 120
@@ -10,6 +11,7 @@ cameras:
     lon: -89.4069
     alt: 325.0
     side: south
+    timezone: "America/Chicago"
     params_path: calibration_data/uwisc/south/camera_params.json
     image_dir_base_url: "https://metobs.ssec.wisc.edu/pub/cache/aoss/cameras"
     poll_interval_s: 120

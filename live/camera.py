@@ -19,6 +19,7 @@ class Camera:
         """
         self.config = cam_config
         self.side = cam_config["side"]
+        self.timezone = cam_config.get("timezone", "America/Chicago")
         self._last_processed_filename: str | None = None
 
     def _build_dir_url(self, date: datetime) -> str:
@@ -65,18 +66,20 @@ class Camera:
         replaying a large backlog.
         """
         now_utc = datetime.now(timezone.utc)
-        url = self._build_dir_url(now_utc)
+        # convert to camera local date for directory path; timestamps in filenames are in local time
+        now_local = now_utc.astimezone(timezone(self.timezone))
+        url = self._build_dir_url(now_local)
         filenames = await self._list_directory(url)
 
         # Midnight rollover: also check yesterday if it's very early UTC
         if (
-            now_utc.hour == 0
+            now_local.hour == 0
             and self._last_processed_filename
             and self._last_processed_filename.startswith("23")
         ):
             from datetime import timedelta
 
-            yesterday = now_utc - timedelta(days=1)
+            yesterday = now_local - timedelta(days=1)
             yesterday_url = self._build_dir_url(yesterday)
             yesterday_files = await self._list_directory(yesterday_url)
             straggler_files = [f for f in yesterday_files if f > self._last_processed_filename]
