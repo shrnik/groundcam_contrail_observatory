@@ -6,6 +6,14 @@ Ground-based camera system for detecting aircraft contrails in real time. The sy
 
 ---
 
+## Demo
+
+![Contrail detection alert](assets/demo_alert.jpg)
+
+*Annotated frame showing a detected contrail. The yellow bounding rectangle follows the aircraft's 10-second heading history; Hough lines aligned within 8° of the motion vector trigger the alert.*
+
+---
+
 ## How It Works
 
 ```
