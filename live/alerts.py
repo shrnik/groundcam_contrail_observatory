@@ -20,7 +20,7 @@ class AlertCache:
     def __init__(self, ttl_s: float = 300, output_dir: str = "live_output"):
         self.ttl_s = ttl_s
         self.output_dir = output_dir
-        self._last_alert: dict[str, float] = {}  # transponder_id → last alert time
+        self._last_alert: dict[str, float] = {}  # ident → last alert time
 
     async def check(self, results: list[tuple], annotated_img: np.ndarray | None, cam: Camera, config) -> None:
         """Fire a single per-frame alert listing all contrailing aircraft not within TTL."""
@@ -28,8 +28,8 @@ class AlertCache:
 
         # Collect all contrailing aircraft in this frame
         contrail_aircraft = [
-            (timestamp, transponder_id, px, py, alt_m)
-            for timestamp, transponder_id, px, py, alt_m, contrail in results
+            (timestamp, ident, px, py, alt_m)
+            for timestamp, ident, px, py, alt_m, contrail in results
             if contrail
         ]
 
@@ -45,8 +45,8 @@ class AlertCache:
         if new_aircraft:
             frame_ts = contrail_aircraft[0][0]
             await self._fire(frame_ts, contrail_aircraft, annotated_img, cam, config)
-            for _, transponder_id, *_ in contrail_aircraft:
-                self._last_alert[transponder_id] = now
+            for _, ident, *_ in contrail_aircraft:
+                self._last_alert[ident] = now
 
         # Lazy eviction of expired entries
         self._last_alert = {
@@ -60,12 +60,12 @@ class AlertCache:
         annotated_img: np.ndarray | None,
         cam: Camera,
         config,
-        image_url: str | None = None,
     ) -> None:
         time_str = timestamp.strftime("%H:%M:%S UTC")
 
         # --- Save annotated image to disk ---
         img_path = None
+        image_url = None
         if annotated_img is not None:
             # alerts_dir = os.path.join(self.output_dir, "alerts")
             # os.makedirs(alerts_dir, exist_ok=True)
@@ -85,10 +85,10 @@ class AlertCache:
         # --- Log to console ---
         ids = ", ".join(t[1] for t in aircraft)
         print(f"[ALERT] Contrails at {time_str} — {len(aircraft)} aircraft: {ids}")
-        for _, transponder_id, px, py, alt_m in aircraft:
+        for _, ident, px, py, alt_m in aircraft:
             alt_ft = int(alt_m * 3.28084)
             logger.info(
-                f"[ALERT] Contrail — flight={transponder_id}  "
+                f"[ALERT] Contrail — flight={ident}  "
                 f"alt={alt_m:.0f}m ({alt_ft:,}ft)  px=({px:.0f},{py:.0f})  {time_str}"
             )
 

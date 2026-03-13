@@ -62,7 +62,7 @@ def upload_annotated_frame(
             blob_name=blob_name,
             account_key=service_client.credential.account_key,
             permission=BlobSasPermissions(read=True),
-            expiry=datetime.now(timezone.utc) + timedelta(days=7),
+            expiry=datetime.now(timezone.utc) + timedelta(days=30),
         )
         sas_url = f"{blob_client.url}?{sas_token}"
         logger.info(f"[azure] uploaded {blob_name} → {sas_url}")

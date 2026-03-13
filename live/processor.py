@@ -195,7 +195,7 @@ def process_frame(
         row = row.iloc[0]
         results.append((
             timestamp,
-            row.get("transponder_id", ident),
+            ident,
             float(row["image_x"]),
             float(row["image_y"]),
             float(row["alt_gnss_meters"]),
