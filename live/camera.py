@@ -19,9 +19,11 @@ class Camera:
           lat, lon, alt, side, params_path, image_dir_base_url, poll_interval_s
         """
         self.config = cam_config
+        self.name = cam_config.get("name")
         self.side = cam_config["side"]
         self.timezone = cam_config.get("timezone", "America/Chicago")
         self._last_processed_filename: str | None = None
+        self._last_processed_date: str | None = None  # "YYYY-MM-DD" in camera local time
 
     def _build_dir_url(self, date: datetime) -> str:
         base = self.config["image_dir_base_url"].rstrip("/")
@@ -69,25 +71,35 @@ class Camera:
         now_utc = datetime.now(timezone.utc)
         # convert to camera local date for directory path; timestamps in filenames are in local time
         now_local = now_utc.astimezone(ZoneInfo(self.timezone))
+        today_str = now_local.strftime("%Y-%m-%d")
+
+        # Date rollover: reset so we don't filter out today's early frames
+        if self._last_processed_date and self._last_processed_date != today_str:
+            logger.info(f"[camera/{self.side}] date rolled over to {today_str}, resetting last frame")
+            self._last_processed_filename = None
+
+        self._last_processed_date = today_str
+
         url = self._build_dir_url(now_local)
         filenames = await self._list_directory(url)
 
         # Midnight rollover: also check yesterday if it's very early UTC
-        if (
-            now_local.hour == 0
-            and self._last_processed_filename
-            and self._last_processed_filename.startswith("23")
-        ):
-            from datetime import timedelta
+        # if (
+        #     now_local.hour == 0
+        #     and self._last_processed_filename
+        #     and self._last_processed_filename.startswith("23")
+        # ):
+        #     from datetime import timedelta
 
-            yesterday = now_local - timedelta(days=1)
-            yesterday_url = self._build_dir_url(yesterday)
-            yesterday_files = await self._list_directory(yesterday_url)
-            straggler_files = [f for f in yesterday_files if f > self._last_processed_filename]
-            if straggler_files:
-                filenames = straggler_files + filenames
+        #     yesterday = now_local - timedelta(days=1)
+        #     yesterday_url = self._build_dir_url(yesterday)
+        #     yesterday_files = await self._list_directory(yesterday_url)
+        #     straggler_files = [f for f in yesterday_files if f > self._last_processed_filename]
+        #     if straggler_files:
+        #         filenames = straggler_files + filenames
 
         if not filenames:
+            logger.warning(f"[camera/{self.camera_name}] no frames found at {url}")
             return []
 
         if self._last_processed_filename:

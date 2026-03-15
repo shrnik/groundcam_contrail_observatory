@@ -1,5 +1,6 @@
 cameras:
-  - lat: 43.0706
+  - name: "UW-Madison East"
+    lat: 43.0706
     lon: -89.4069
     alt: 325.0
     side: east
@@ -7,7 +8,8 @@ cameras:
     params_path: calibration_data/uwisc/east/camera_params.json
     image_dir_base_url: "https://metobs.ssec.wisc.edu/pub/cache/aoss/cameras"
     poll_interval_s: 120
-  - lat: 43.0706
+  - name: "UW-Madison South"
+    lat: 43.0706
     lon: -89.4069
     alt: 325.0
     side: south
