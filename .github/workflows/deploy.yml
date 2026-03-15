@@ -8,7 +8,9 @@ env:
   ACR_NAME: contrailregistry
   IMAGE: contrail-live
   RESOURCE_GROUP: contrail_observatory
-  CONTAINER_NAME: contrail-live
+  PIPELINE_CONTAINER: contrail-pipeline
+  SERVER_CONTAINER: contrail-server
+  CONTAINERAPP_ENV: contrail-env
 
 jobs:
   deploy:
@@ -30,11 +32,11 @@ jobs:
           docker push $ACR_NAME.azurecr.io/$IMAGE:${{ github.sha }}
           docker push $ACR_NAME.azurecr.io/$IMAGE:latest
 
-      - name: Deploy to Azure Container Instance
+      - name: Deploy pipeline container
         run: |
           az container create \
             --resource-group $RESOURCE_GROUP \
-            --name $CONTAINER_NAME \
+            --name $PIPELINE_CONTAINER \
             --image $ACR_NAME.azurecr.io/$IMAGE:${{ github.sha }} \
             --registry-login-server $ACR_NAME.azurecr.io \
             --registry-username ${{ secrets.ACR_USERNAME }} \
@@ -49,7 +51,30 @@ jobs:
             --azure-file-volume-account-key "${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}" \
             --azure-file-volume-share-name contrail-data \
             --azure-file-volume-mount-path /app/live_output \
-            --ports 8000 \
-            --ip-address Public \
-            --dns-name-label contrail-observatory \
+            --command-line "python -m live.main --config live/config.yaml" \
             --output table
+
+      - name: Deploy server to Container Apps
+        run: |
+          az containerapp create \
+            --name $SERVER_CONTAINER \
+            --resource-group $RESOURCE_GROUP \
+            --environment $CONTAINERAPP_ENV \
+            --image $ACR_NAME.azurecr.io/$IMAGE:${{ github.sha }} \
+            --registry-server $ACR_NAME.azurecr.io \
+            --registry-username ${{ secrets.ACR_USERNAME }} \
+            --registry-password ${{ secrets.ACR_PASSWORD }} \
+            --target-port 8000 \
+            --ingress external \
+            --cpu 0.5 --memory 1.0Gi \
+            --env-vars AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
+            --command "uvicorn" "live.server:app" "--host" "0.0.0.0" "--port" "8000" \
+            --volume-name output-vol \
+            --storage-type AzureFile \
+            --storage-name contrail-data \
+            --mount-path /app/live_output \
+            2>/dev/null || \
+          az containerapp update \
+            --name $SERVER_CONTAINER \
+            --resource-group $RESOURCE_GROUP \
+            --image $ACR_NAME.azurecr.io/$IMAGE:${{ github.sha }}
