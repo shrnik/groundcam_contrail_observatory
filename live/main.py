@@ -75,6 +75,7 @@ async def main(config_path: str = "live/config.yaml") -> None:
                 results, annotated_img = processor.process_frame(
                     ts, image_bytes, pings, cam_params, config
                 )
+                image_url = None
                 if results and annotated_img is not None:
                     try:
                         image_url = await asyncio.get_event_loop().run_in_executor(
