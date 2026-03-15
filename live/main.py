@@ -84,7 +84,7 @@ async def main(config_path: str = "live/config.yaml") -> None:
                         ) or ""
                     except Exception as e:
                         logger.warning(f"[main] failed to upload frame for {ts}: {e}")
-                await alert_cache.check(results, annotated_img, cam, config, image_url)
+                await alert_cache.check(results, annotated_img, cam, config, image_url=image_url)
                 analytics.log(results, output_dir, camera_name=cam.name, image_url=image_url)
             await asyncio.sleep(interval)
 
