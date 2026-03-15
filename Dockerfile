@@ -12,4 +12,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["python", "-m", "live.main", "--config", "live/config.yaml"]
+RUN chmod +x entrypoint.sh
+CMD ["./entrypoint.sh"]

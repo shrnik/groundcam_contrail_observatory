@@ -6,30 +6,35 @@ from datetime import date, datetime
 
 logger = logging.getLogger(__name__)
 
-_COLUMNS = ["timestamp", "transponder_id", "px", "py", "alt_m", "contrail"]
+_COLUMNS = ["timestamp", "camera_name", "ident", "px", "py", "alt_m", "contrail", "image_url"]
 
 
-def log(results: list[tuple], output_dir: str) -> None:
+def log(
+    results: list[tuple],
+    output_dir: str,
+    camera_name: str = "",
+    image_url: str = "",
+) -> None:
     """Append result rows to today's daily CSV file."""
     if not results:
         return
     os.makedirs(output_dir, exist_ok=True)
     today = date.today().isoformat()
     path = os.path.join(output_dir, f"{today}.csv")
-    file_exists = os.path.exists(path)
-
     with open(path, "a", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=_COLUMNS)
-        if not file_exists:
+        if f.tell() == 0:
             writer.writeheader()
-        for timestamp, transponder_id, px, py, alt_m, contrail in results:
+        for timestamp, ident, px, py, alt_m, contrail in results:
             writer.writerow({
                 "timestamp": timestamp.isoformat(),
-                "transponder_id": transponder_id,
+                "camera_name": camera_name,
+                "ident": ident,
                 "px": f"{px:.1f}",
                 "py": f"{py:.1f}",
                 "alt_m": f"{alt_m:.0f}",
                 "contrail": int(contrail),
+                "image_url": image_url,
             })
 
 
@@ -42,9 +47,9 @@ def daily_summary(target_date: date, output_dir: str) -> dict:
     total, contrail = set(), set()
     with open(path, newline="") as f:
         for row in csv.DictReader(f):
-            total.add(row["transponder_id"])
+            total.add(row["ident"])
             if row["contrail"] == "1":
-                contrail.add(row["transponder_id"])
+                contrail.add(row["ident"])
 
     return {
         "date": target_date.isoformat(),

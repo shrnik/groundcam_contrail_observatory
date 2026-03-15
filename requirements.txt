@@ -21,6 +21,10 @@ azure-storage-blob==12.25.1
 # CLI / progress
 tqdm==4.67.1
 dotenv
+
+# Web server
+fastapi==0.115.6
+uvicorn==0.34.0
 # # non_live pipeline only
 # torch  # version depends on your CUDA setup — install separately if needed
 # transformers

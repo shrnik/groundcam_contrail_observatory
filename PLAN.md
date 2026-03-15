@@ -51,7 +51,7 @@ Handle midnight rollover: if current UTC hour is 00 and last processed was hour 
 1. Filter pings to those within ±5s of the image timestamp
 2. For each ping, call `project_to_pixel(ping_lat, ping_lon, ping_alt, camera_config)` → returns `(px, py)` or `None` if outside FOV
 3. For each visible aircraft, call `detect_contrail(image, px, py)` → returns `bool`
-4. Return list of `(timestamp, transponder_id, px, py, alt, contrail_bool)`
+4. Return list of `(timestamp, ident, px, py, alt, contrail_bool)`
 
 **Projection stub:** takes aircraft lat/lon/alt, computes azimuth and elevation angle relative to camera, maps to pixel coords using FOV and image dimensions. You'll refine this with your calibration.
 
@@ -59,17 +59,17 @@ Handle midnight rollover: if current UTC hour is 00 and last processed was hour 
 
 ### alerts.py
 
-`AlertCache` class with a dict `{transponder_id: last_alert_time}`.
+`AlertCache` class with a dict `{ident: last_alert_time}`.
 
-`check(results)`: for each result where `contrail=True`, look up the transponder in the cache. If missing or expired (>5 min), fire alert and update cache. Lazy eviction — no background cleanup needed.
+`check(results)`: for each result where `contrail=True`, look up the transponder/identifier in the cache. If missing or expired (>5 min), fire alert and update cache. Lazy eviction — no background cleanup needed.
 
 Alert action: start with just `print()` / log to file. Easy to swap in webhook/email later.
 
 ### analytics.py
 
-`log(results)`: append each result row to a daily CSV file (`YYYY-MM-DD.csv`) with columns: `timestamp, transponder_id, px, py, alt, contrail`.
+`log(results)`: append each result row to a daily CSV file (`YYYY-MM-DD.csv`) with columns: `timestamp, ident, px, py, alt, contrail`.
 
-`daily_summary(date)`: read CSV, count unique transponders with at least one `contrail=True` vs total unique transponders.
+`daily_summary(date)`: read CSV, count unique identifiers with at least one `contrail=True` vs total unique identifiers.
 
 `monthly_summary(year, month)`: glob all CSVs for that month, aggregate daily summaries.
 

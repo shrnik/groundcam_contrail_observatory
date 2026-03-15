@@ -49,4 +49,7 @@ jobs:
             --azure-file-volume-account-key "${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}" \
             --azure-file-volume-share-name contrail-data \
             --azure-file-volume-mount-path /app/live_output \
+            --ports 8000 \
+            --ip-address Public \
+            --dns-name-label contrail-observatory \
             --output table

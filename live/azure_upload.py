@@ -10,11 +10,11 @@ Blob path: <container>/<side>/<YYYY-MM-DD>/<HH_MM_SS>.jpg
 import io
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
 import cv2
 import numpy as np
-from azure.storage.blob import BlobServiceClient, BlobSasPermissions, generate_blob_sas
+from azure.storage.blob import BlobServiceClient
 
 logger = logging.getLogger(__name__)
 
@@ -55,18 +55,10 @@ def upload_annotated_frame(
         blob_client = service_client.get_blob_client(container=container, blob=blob_name)
         blob_client.upload_blob(io.BytesIO(buf.tobytes()), overwrite=True)
 
-        # Generate a SAS URL valid for 7 days so Slack can render it
-        sas_token = generate_blob_sas(
-            account_name=service_client.account_name,
-            container_name=container,
-            blob_name=blob_name,
-            account_key=service_client.credential.account_key,
-            permission=BlobSasPermissions(read=True),
-            expiry=datetime.now(timezone.utc) + timedelta(days=30),
-        )
-        sas_url = f"{blob_client.url}?{sas_token}"
-        logger.info(f"[azure] uploaded {blob_name} → {sas_url}")
-        return sas_url
+        # Use the permanent public blob URL (requires container public read access)
+        url = blob_client.url
+        logger.info(f"[azure] uploaded {blob_name} → {url}")
+        return url
     except Exception as e:
         logger.error(f"[azure] upload failed: {e}")
         return None

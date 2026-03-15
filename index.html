@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contrail Observatory</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { background: #0d1117; color: #c9d1d9; font-family: ui-monospace, monospace; margin: 0; padding: 16px; }
+    a { color: #58a6ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+    h1 { margin: 0; font-size: 1.4rem; color: #e6edf3; }
+    .stats { display: flex; gap: 16px; margin-left: auto; }
+    .stat { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 8px 16px; text-align: center; }
+    .stat .val { font-size: 1.6rem; font-weight: bold; color: #e6edf3; }
+    .stat.highlight .val { color: #f0a030; }
+    .stat .lbl { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; letter-spacing: .05em; }
+
+    nav { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+    .nav-btn { background: #21262d; border: 1px solid #30363d; border-radius: 6px; padding: 6px 14px; color: #c9d1d9; cursor: pointer; font-family: inherit; font-size: inherit; }
+    .nav-btn:hover:not(:disabled) { background: #30363d; }
+    .nav-btn:disabled { opacity: 0.4; cursor: default; }
+    select { background: #21262d; border: 1px solid #30363d; border-radius: 6px; padding: 6px 10px; color: #c9d1d9; font-family: inherit; cursor: pointer; }
+
+    .frames { display: flex; flex-direction: column; gap: 20px; }
+    .frame-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; }
+    .frame-header { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: #21262d; border-bottom: 1px solid #30363d; }
+    .time { font-size: 1rem; font-weight: bold; color: #e6edf3; }
+    .side-badge { background: #1f6feb; color: #fff; border-radius: 4px; padding: 2px 8px; font-size: 0.75rem; text-transform: uppercase; }
+    .frame-card img { display: block; width: 100%; max-height: 480px; object-fit: contain; background: #000; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { padding: 8px 16px; text-align: left; color: #8b949e; font-weight: normal; border-bottom: 1px solid #30363d; }
+    td { padding: 8px 16px; border-bottom: 1px solid #21262d; }
+    tr:last-child td { border-bottom: none; }
+    tr.contrail-row td { background: rgba(240,160,48,0.06); }
+    .badge { border-radius: 4px; padding: 2px 8px; font-size: 0.75rem; }
+    .badge.contrail { background: #3d2b00; color: #f0a030; }
+    .badge.no-contrail { background: #1c2128; color: #8b949e; }
+    .empty { color: #8b949e; padding: 32px; text-align: center; }
+    code { background: #1c2128; padding: 1px 5px; border-radius: 3px; }
+
+    #status { color: #8b949e; padding: 32px; text-align: center; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Contrail Observatory</h1>
+    <div class="stats">
+      <div class="stat">
+        <div class="val" id="stat-total">—</div>
+        <div class="lbl">Aircraft tracked</div>
+      </div>
+      <div class="stat highlight">
+        <div class="val" id="stat-contrail">—</div>
+        <div class="lbl">Contrailing</div>
+      </div>
+    </div>
+  </header>
+
+  <nav>
+    <button class="nav-btn" id="btn-prev" disabled></button>
+    <select id="date-select"></select>
+    <button class="nav-btn" id="btn-next" disabled></button>
+  </nav>
+
+  <div id="status">Loading…</div>
+  <div class="frames" id="frames"></div>
+
+  <script>
+    // Point this at your running FastAPI server.
+    const API = "http://localhost:8000";
+
+    let availableDates = [];
+    let currentDate = null;
+
+    const elStatus     = document.getElementById("status");
+    const elFrames     = document.getElementById("frames");
+    const elSelect     = document.getElementById("date-select");
+    const elPrev       = document.getElementById("btn-prev");
+    const elNext       = document.getElementById("btn-next");
+    const elStatTotal  = document.getElementById("stat-total");
+    const elStatContr  = document.getElementById("stat-contrail");
+
+    async function loadDates() {
+      const res = await fetch(`${API}/api/dates`);
+      if (!res.ok) throw new Error("Failed to load dates");
+      const data = await res.json();
+      availableDates = data.dates.slice().reverse(); // newest first
+
+      elSelect.innerHTML = availableDates
+        .map(d => `<option value="${d}">${d}</option>`)
+        .join("");
+
+      const hash = location.hash.slice(1);
+      const initial = availableDates.includes(hash) ? hash : availableDates[0];
+      if (initial) loadDay(initial);
+    }
+
+    async function loadDay(dateStr) {
+      currentDate = dateStr;
+      location.hash = dateStr;
+      document.title = `Contrail Observatory — ${dateStr}`;
+
+      elSelect.value = dateStr;
+      elStatus.textContent = `Loading ${dateStr}…`;
+      elFrames.innerHTML = "";
+      elStatTotal.textContent = "—";
+      elStatContr.textContent = "—";
+
+      const idx = availableDates.indexOf(dateStr);
+      elPrev.textContent = `← ${availableDates[idx + 1] ?? ""}`;
+      elNext.textContent = `${availableDates[idx - 1] ?? ""} →`;
+      elPrev.disabled = idx >= availableDates.length - 1;
+      elNext.disabled = idx <= 0;
+
+      try {
+        const res = await fetch(`${API}/api/${dateStr}`);
+        if (res.status === 404) {
+          elStatus.textContent = `No detections logged for ${dateStr}.`;
+          return;
+        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        elStatTotal.textContent = data.total_aircraft;
+        elStatContr.textContent = data.contrail_aircraft;
+        elStatus.textContent = "";
+        elFrames.innerHTML = data.frames.map(renderFrame).join("");
+      } catch (e) {
+        elStatus.textContent = `Error: ${e.message}`;
+      }
+    }
+
+    function renderFrame(frame) {
+      const ts = frame.timestamp ?? "";
+      const timeDisplay = ts.length >= 19 ? ts.slice(11, 19) + " UTC" : ts;
+      const side = frame.camera_name || "unknown";
+
+      const imgHtml = frame.image_url
+        ? `<a href="${esc(frame.image_url)}" target="_blank"><img src="${esc(frame.image_url)}" alt="Annotated frame" loading="lazy"></a>`
+        : "";
+
+      const rows = (frame.aircraft ?? []).map(ac => {
+        const isContrail = ac.contrail === "1";
+        const badge = isContrail
+          ? `<span class="badge contrail">contrail</span>`
+          : `<span class="badge no-contrail">none</span>`;
+        const altM = parseFloat(ac.alt_m ?? 0);
+        const altFt = Math.round(altM * 3.28084).toLocaleString();
+        const px = parseFloat(ac.px ?? 0).toFixed(0);
+        const py = parseFloat(ac.py ?? 0).toFixed(0);
+        return `<tr class="${isContrail ? "contrail-row" : ""}">
+          <td><code>${esc(ac.ident)}</code></td>
+          <td>${altM.toLocaleString(undefined, {maximumFractionDigits: 0})} m (${altFt} ft)</td>
+          <td>(${px}, ${py})</td>
+          <td>${badge}</td>
+        </tr>`;
+      }).join("");
+
+      return `<div class="frame-card">
+        <div class="frame-header">
+          <span class="time">${esc(timeDisplay)}</span>
+          <span class="side-badge">${esc(side)}</span>
+        </div>
+        ${imgHtml}
+        <table>
+          <thead><tr><th>Flight</th><th>Altitude</th><th>Pixel</th><th>Contrail</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    }
+
+    function esc(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    elSelect.addEventListener("change", () => loadDay(elSelect.value));
+    elPrev.addEventListener("click", () => {
+      const idx = availableDates.indexOf(currentDate);
+      if (idx < availableDates.length - 1) loadDay(availableDates[idx + 1]);
+    });
+    elNext.addEventListener("click", () => {
+      const idx = availableDates.indexOf(currentDate);
+      if (idx > 0) loadDay(availableDates[idx - 1]);
+    });
+    window.addEventListener("hashchange", () => {
+      const hash = location.hash.slice(1);
+      if (hash && hash !== currentDate && availableDates.includes(hash)) loadDay(hash);
+    });
+
+    loadDates().catch(e => { elStatus.textContent = `Could not reach API: ${e.message}`; });
+  </script>
+</body>
+</html>

@@ -22,7 +22,7 @@ class AlertCache:
         self.output_dir = output_dir
         self._last_alert: dict[str, float] = {}  # ident → last alert time
 
-    async def check(self, results: list[tuple], annotated_img: np.ndarray | None, cam: Camera, config) -> None:
+    async def check(self, results: list[tuple], annotated_img: np.ndarray | None, cam: Camera, config, img_url: str | None) -> None:
         """Fire a single per-frame alert listing all contrailing aircraft not within TTL."""
         now = time.time()
 
@@ -44,7 +44,7 @@ class AlertCache:
 
         if new_aircraft:
             frame_ts = contrail_aircraft[0][0]
-            await self._fire(frame_ts, contrail_aircraft, annotated_img, cam, config)
+            await self._fire(frame_ts, contrail_aircraft, annotated_img, cam, config, img_url)
             for _, ident, *_ in contrail_aircraft:
                 self._last_alert[ident] = now
 
@@ -60,13 +60,14 @@ class AlertCache:
         annotated_img: np.ndarray | None,
         cam: Camera,
         config,
+        img_url: str | None
     ) -> None:
         time_str = timestamp.strftime("%H:%M:%S UTC")
 
         # --- Save annotated image to disk ---
         img_path = None
         image_url = None
-        if annotated_img is not None:
+        if annotated_img is not None and img_url is None:
             # alerts_dir = os.path.join(self.output_dir, "alerts")
             # os.makedirs(alerts_dir, exist_ok=True)
             # fname = f"{timestamp.strftime('%Y%m%d_%H%M%S')}.jpg"

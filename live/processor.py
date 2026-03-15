@@ -88,7 +88,7 @@ def process_frame(
         config:       Loaded config dict.
 
     Returns:
-        List of (timestamp, transponder_id, px, py, alt_m, contrail_bool) tuples.
+        List of (timestamp, ident, px, py, alt_m, contrail_bool) tuples.
     """
     global _prev_frame
 
