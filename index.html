@@ -22,7 +22,10 @@
     .nav-btn { background: #21262d; border: 1px solid #30363d; border-radius: 6px; padding: 6px 14px; color: #c9d1d9; cursor: pointer; font-family: inherit; font-size: inherit; }
     .nav-btn:hover:not(:disabled) { background: #30363d; }
     .nav-btn:disabled { opacity: 0.4; cursor: default; }
-    select { background: #21262d; border: 1px solid #30363d; border-radius: 6px; padding: 6px 10px; color: #c9d1d9; font-family: inherit; cursor: pointer; }
+    select { background: #21262d; border: 1px solid #30363d; border-radius: 6px; padding: 8px 14px; color: #c9d1d9; font-family: inherit; font-size: 1rem; cursor: pointer; }
+    .filter-btn { background: #21262d; border: 1px solid #30363d; border-radius: 6px; padding: 6px 14px; color: #8b949e; cursor: pointer; font-family: inherit; font-size: inherit; margin-left: auto; }
+    .filter-btn:hover { background: #30363d; }
+    .filter-btn.active { background: #3d2b00; border-color: #f0a030; color: #f0a030; }
 
     .frames { display: flex; flex-direction: column; gap: 20px; }
     .frame-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; }
@@ -63,6 +66,7 @@
     <button class="nav-btn" id="btn-prev" disabled></button>
     <select id="date-select"></select>
     <button class="nav-btn" id="btn-next" disabled></button>
+    <button class="filter-btn" id="btn-filter">Show contrails only</button>
   </nav>
 
   <div id="status">Loading…</div>
@@ -74,6 +78,8 @@
 
     let availableDates = [];
     let currentDate = null;
+    let currentFrames = [];
+    let showContrailsOnly = false;
 
     const elStatus     = document.getElementById("status");
     const elFrames     = document.getElementById("frames");
@@ -82,6 +88,7 @@
     const elNext       = document.getElementById("btn-next");
     const elStatTotal  = document.getElementById("stat-total");
     const elStatContr  = document.getElementById("stat-contrail");
+    const elFilter     = document.getElementById("btn-filter");
 
     async function loadDates() {
       const res = await fetch(`${API}/api/dates`);
@@ -127,10 +134,20 @@
         elStatTotal.textContent = data.total_aircraft;
         elStatContr.textContent = data.contrail_aircraft;
         elStatus.textContent = "";
-        elFrames.innerHTML = data.frames.map(renderFrame).join("");
+        currentFrames = data.frames;
+        renderFrames();
       } catch (e) {
         elStatus.textContent = `Error: ${e.message}`;
       }
+    }
+
+    function renderFrames() {
+      const frames = showContrailsOnly
+        ? currentFrames.filter(f => (f.aircraft ?? []).some(ac => ac.contrail === "1"))
+        : currentFrames;
+      elFrames.innerHTML = frames.length
+        ? frames.map(renderFrame).join("")
+        : `<div class="empty">No contrail frames found for this day.</div>`;
     }
 
     function renderFrame(frame) {
@@ -179,6 +196,13 @@
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
     }
+
+    elFilter.addEventListener("click", () => {
+      showContrailsOnly = !showContrailsOnly;
+      elFilter.classList.toggle("active", showContrailsOnly);
+      elFilter.textContent = showContrailsOnly ? "Show all flights" : "Show contrails only";
+      if (currentFrames.length) renderFrames();
+    });
 
     elSelect.addEventListener("change", () => loadDay(elSelect.value));
     elPrev.addEventListener("click", () => {
