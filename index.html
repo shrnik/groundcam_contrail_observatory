@@ -29,9 +29,11 @@
 
     .frames { display: flex; flex-direction: column; gap: 20px; }
     .frame-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; }
-    .frame-header { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: #21262d; border-bottom: 1px solid #30363d; }
+    .frame-header { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: #21262d; border-bottom: 1px solid #30363d; cursor: pointer; user-select: none; }
+    .frame-header:hover { background: #2d333b; }
     .time { font-size: 1rem; font-weight: bold; color: #e6edf3; }
     .side-badge { background: #1f6feb; color: #fff; border-radius: 4px; padding: 2px 8px; font-size: 0.75rem; text-transform: uppercase; }
+    .header-hint { margin-left: auto; font-size: 0.7rem; color: #8b949e; }
     .frame-card img { display: block; width: 100%; max-height: 480px; object-fit: contain; background: #000; }
     table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
     th { padding: 8px 16px; text-align: left; color: #8b949e; font-weight: normal; border-bottom: 1px solid #30363d; }
@@ -45,6 +47,66 @@
     code { background: #1c2128; padding: 1px 5px; border-radius: 3px; }
 
     #status { color: #8b949e; padding: 32px; text-align: center; }
+
+    /* Modal */
+    #modal-backdrop {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    #modal-backdrop.open { display: flex; }
+    #modal-box {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      max-width: min(1200px, 100%);
+      width: 100%;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #modal-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      background: #21262d;
+      border-bottom: 1px solid #30363d;
+      flex-shrink: 0;
+    }
+    #modal-title { font-weight: bold; color: #e6edf3; flex: 1; }
+    #modal-close {
+      background: none; border: none; color: #8b949e; cursor: pointer;
+      font-size: 1.1rem; padding: 2px 6px; border-radius: 4px;
+      font-family: inherit;
+    }
+    #modal-close:hover { background: #30363d; color: #e6edf3; }
+    #modal-img-wrap {
+      position: relative;
+      overflow: auto;
+      flex: 1;
+      background: #000;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+    }
+    #modal-img-wrap > .img-container {
+      position: relative;
+      display: inline-block;
+      line-height: 0;
+    }
+    #modal-img { display: block; max-width: 100%; height: auto; }
+    #modal-svg {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -72,9 +134,26 @@
   <div id="status">Loading…</div>
   <div class="frames" id="frames"></div>
 
+  <!-- Modal -->
+  <div id="modal-backdrop">
+    <div id="modal-box">
+      <div id="modal-header">
+        <span id="modal-title"></span>
+        <button id="modal-close">✕</button>
+      </div>
+      <div id="modal-img-wrap">
+        <div class="img-container">
+          <img id="modal-img" src="" alt="Camera frame">
+          <svg id="modal-svg" viewBox="0 0 2592 1944" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     // Point this at your running FastAPI server.
     const API = "https://contrails-server.greenisland-ce3c2a2f.eastus.azurecontainerapps.io";
+    const CAM_BASE = "https://metobs.ssec.wisc.edu/pub/cache/aoss/cameras";
 
     let availableDates = [];
     let currentDate = null;
@@ -89,6 +168,68 @@
     const elStatTotal  = document.getElementById("stat-total");
     const elStatContr  = document.getElementById("stat-contrail");
     const elFilter     = document.getElementById("btn-filter");
+    const elBackdrop   = document.getElementById("modal-backdrop");
+    const elModalTitle = document.getElementById("modal-title");
+    const elModalImg   = document.getElementById("modal-img");
+    const elModalSvg   = document.getElementById("modal-svg");
+    const elModalClose = document.getElementById("modal-close");
+
+    function cameraImageUrl(ts, side) {
+      const d = new Date(ts);
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Chicago',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+      }).formatToParts(d);
+      const p = Object.fromEntries(parts.map(x => [x.type, x.value]));
+      const file = `${p.hour}_${p.minute}_${p.second}.trig+00.jpg`;
+      const s = side.split(" ")[1].toLowerCase();
+      return `${CAM_BASE}/${s}/img/${p.year}/${p.month}/${p.day}/orig/${file}`;
+    }
+
+    function openModal(frameIdx) {
+      const frame = currentFrames[frameIdx];
+      if (!frame) return;
+
+      const ts = frame.timestamp ?? "";
+      const side = frame.camera_name || "unknown";
+      const timeDisplay = ts.length >= 19 ? ts.slice(11, 19) + " UTC" : ts;
+
+      elModalTitle.textContent = `${timeDisplay}  ·  ${side}`;
+      elModalImg.src = cameraImageUrl(ts, side);
+
+      // Build SVG overlays for each aircraft
+      const svgChildren = (frame.aircraft ?? []).map(ac => {
+        const px = parseFloat(ac.px ?? -1);
+        const py = parseFloat(ac.py ?? -1);
+        if (px < 0 || py < 0 || px > 2592 || py > 1944) return "";
+        const isContrail = ac.contrail === "1";
+        const color = isContrail ? "#f0a030" : "#58a6ff";
+        // Circle + label
+        return `
+          <circle cx="${px}" cy="${py}" r="18" fill="${color}" fill-opacity="0.25" stroke="${color}" stroke-width="3"/>
+          <text x="${px + 24}" y="${py + 6}" fill="${color}" font-size="48" font-family="ui-monospace,monospace">${esc(ac.ident)}</text>`;
+      }).join("");
+
+      elModalSvg.innerHTML = svgChildren;
+      elBackdrop.classList.add("open");
+    }
+
+    function closeModal() {
+      elBackdrop.classList.remove("open");
+      elModalImg.src = "";
+      elModalSvg.innerHTML = "";
+    }
+
+    elModalClose.addEventListener("click", closeModal);
+    elBackdrop.addEventListener("click", e => { if (e.target === elBackdrop) closeModal(); });
+    document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+
+    // Event delegation for frame header clicks
+    elFrames.addEventListener("click", e => {
+      const header = e.target.closest(".frame-header[data-frame-idx]");
+      if (header) openModal(parseInt(header.dataset.frameIdx, 10));
+    });
 
     async function loadDates() {
       const res = await fetch(`${API}/api/dates`);
@@ -142,15 +283,16 @@
     }
 
     function renderFrames() {
-      const frames = showContrailsOnly
-        ? currentFrames.filter(f => (f.aircraft ?? []).some(ac => ac.contrail === "1"))
-        : currentFrames;
-      elFrames.innerHTML = frames.length
-        ? frames.map(renderFrame).join("")
+      const indexed = currentFrames.map((f, i) => ({ frame: f, idx: i }));
+      const visible = showContrailsOnly
+        ? indexed.filter(({ frame }) => (frame.aircraft ?? []).some(ac => ac.contrail === "1"))
+        : indexed;
+      elFrames.innerHTML = visible.length
+        ? visible.map(({ frame, idx }) => renderFrame(frame, idx)).join("")
         : `<div class="empty">No contrail frames found for this day.</div>`;
     }
 
-    function renderFrame(frame) {
+    function renderFrame(frame, frameIdx) {
       const ts = frame.timestamp ?? "";
       const timeDisplay = ts.length >= 19 ? ts.slice(11, 19) + " UTC" : ts;
       const side = frame.camera_name || "unknown";
@@ -177,9 +319,10 @@
       }).join("");
 
       return `<div class="frame-card">
-        <div class="frame-header">
+        <div class="frame-header" data-frame-idx="${frameIdx}">
           <span class="time">${esc(timeDisplay)}</span>
           <span class="side-badge">${esc(side)}</span>
+          <span class="header-hint">click to view raw</span>
         </div>
         ${imgHtml}
         <table>
