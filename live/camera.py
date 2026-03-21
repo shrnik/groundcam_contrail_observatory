@@ -29,12 +29,11 @@ class Camera:
         base = self.config["image_dir_base_url"].rstrip("/")
         return f"{base}/{self.side}/img/{date.year}/{date.month:02d}/{date.day:02d}/orig/"
 
-    @staticmethod
-    def _parse_timestamp(filename: str, date: datetime) -> datetime:
+    def _parse_timestamp(self, filename: str, date: datetime) -> datetime:
         time_part = filename.split(".")[0]  # e.g. "14_32_05"
         date_str = date.strftime("%Y-%m-%d")
         naive_dt = datetime.strptime(f"{date_str} {time_part}", "%Y-%m-%d %H_%M_%S")
-        ts = pd.Timestamp(naive_dt, tz="America/Chicago").tz_convert("UTC")
+        ts = pd.Timestamp(naive_dt, tz=self.timezone).tz_convert("UTC")
         return ts.to_pydatetime()
 
     async def _list_directory(self, url: str) -> list[str]:
@@ -122,7 +121,7 @@ class Camera:
                 continue
             filename, image_bytes = result
             try:
-                ts = self._parse_timestamp(filename, now_utc)
+                ts = self._parse_timestamp(filename, now_local)
                 frames.append((ts, image_bytes))
             except Exception as e:
                 logger.warning(f"[camera/{self.side}] failed to parse timestamp for {filename}: {e}")

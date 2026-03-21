@@ -19,13 +19,13 @@ cameras:
     poll_interval_s: 120
 
 adsb:
-  radius_km: 100
+  radius_km: 80
   poll_interval_s: 10
   max_age_s: 600
   min_alt_m: 2438.4   # 8000 ft
 
 detection:
-  max_range_km: 100.0
+  max_range_km: 80
   min_line_length: 40.0
 
 alerts:

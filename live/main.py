@@ -19,8 +19,8 @@ load_dotenv()
 # Ensure the project root is on sys.path so utils.* imports work
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import cv2
-from live import adsb, analytics, azure_upload, processor
+from live import adsb, analytics, azure_upload
+from live.processor import FrameProcessor
 from live.alerts import AlertCache
 from live.camera import Camera
 from live.config import load_config
@@ -42,10 +42,10 @@ async def main(config_path: str = "live/config.yaml") -> None:
 
     cam_configs = config["cameras"]
     cameras = [Camera(cam_cfg) for cam_cfg in cam_configs]
-    cam_params_list = [
-        proj_utils.load_camera_parameters(cam_cfg["params_path"]) for cam_cfg in cam_configs
-    ]
+    processors = []
     for cam_cfg in cam_configs:
+        cam_params = proj_utils.load_camera_parameters(cam_cfg["params_path"])
+        processors.append(FrameProcessor(cam_params, config))
         logger.info(f"[main] loaded camera params from {cam_cfg['params_path']}")
 
     # Use the first camera's location for ADS-B filtering (all cameras share the same site)
@@ -66,15 +66,13 @@ async def main(config_path: str = "live/config.yaml") -> None:
             logger.info(f"[adsb] buffer: {len(pings)} pings")
             await asyncio.sleep(adsb_interval)
 
-    async def image_task(cam: Camera, cam_params: dict) -> None:
+    async def image_task(cam: Camera, proc: FrameProcessor) -> None:
         """Fetch new frames every poll_interval_s seconds and run detection."""
         interval = cam.config["poll_interval_s"]
         while True:
             frames = await cam.fetch_new_frames()
             for ts, image_bytes in frames:
-                results, annotated_img = processor.process_frame(
-                    ts, image_bytes, pings, cam_params, config
-                )
+                results, annotated_img = proc.process_frame(ts, image_bytes, pings)
                 image_url = None
                 if any(r[5] for r in results) and annotated_img is not None:
                     try:
@@ -92,7 +90,7 @@ async def main(config_path: str = "live/config.yaml") -> None:
     logger.info(f"[main] starting live contrail detection pipeline with {len(cameras)} camera(s)")
     await asyncio.gather(
         adsb_task(),
-        *[image_task(cam, cam_params) for cam, cam_params in zip(cameras, cam_params_list)],
+        *[image_task(cam, proc) for cam, proc in zip(cameras, processors)],
     )
 
 
