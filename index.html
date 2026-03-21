@@ -175,7 +175,8 @@
     const elModalClose = document.getElementById("modal-close");
 
     function cameraImageUrl(ts, side) {
-      const d = new Date(ts);
+      // Ensure ts is parsed as UTC (API returns "YYYY-MM-DD HH:MM:SS" without Z)
+      const d = new Date(ts.includes("Z") || ts.includes("+") ? ts : ts.replace(" ", "T") + "Z");
       const parts = new Intl.DateTimeFormat('en-US', {
         timeZone: 'America/Chicago',
         year: 'numeric', month: '2-digit', day: '2-digit',
