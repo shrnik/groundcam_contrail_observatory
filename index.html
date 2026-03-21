@@ -297,7 +297,7 @@
         ? indexed.filter(({ frame }) => (frame.aircraft ?? []).some(ac => ac.contrail === "1"))
         : indexed;
       elFrames.innerHTML = visible.length
-        ? visible.map(({ frame, idx }) => renderFrame(frame, idx)).join("")
+        ? visible.reverse().map(({ frame, idx }) => renderFrame(frame, idx)).join("")
         : `<div class="empty">No contrail frames found for this day.</div>`;
     }
 
