@@ -3,6 +3,9 @@ name: Build & Deploy
 on:
   push:
     branches: [main]
+    paths:
+      - 'live/**'
+      - '.github/workflows/**'
 
 env:
   ACR_NAME: contrailregistry
