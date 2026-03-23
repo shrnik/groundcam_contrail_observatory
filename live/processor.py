@@ -167,6 +167,13 @@ class FrameProcessor:
         # Drop aircraft with no valid pixel projection
         df_filtered = df_filtered.dropna(subset=["image_x", "image_y"])
 
+        # drop any aircraft projected outside the image bounds
+        h, w = img_np.shape[:2]
+        df_filtered = df_filtered[
+            (df_filtered["image_x"] >= 0) & (df_filtered["image_x"] < w) &
+            (df_filtered["image_y"] >= 0) & (df_filtered["image_y"] < h)
+        ]
+
         if df_filtered.empty:
             logger.info("[processor] no aircraft visible in frame")
             self._prev_frame = img_np
