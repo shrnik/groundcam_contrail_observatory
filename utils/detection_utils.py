@@ -137,7 +137,7 @@ def compute_dominant_line_angle(rect_dir_vec, edges_final):
         best_angle: Dominant line angle in degrees (None if not found).
         angle_offset_from_rect: Signed offset from rectangle direction in degrees (None if not found).
     """
-    tolerance_deg = 8.0  # degrees
+    tolerance_deg = 16  # degrees
     # ---- Inputs you already have ----
     # ux, uy: rectangle direction vector components (image coords: +x right, +y down)
     ux, uy = rect_dir_vec  # e.g., (ux, uy) from your data
