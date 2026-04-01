@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "camera_params",
+  "description": "Calibration parameters for a single ground-based camera. Used by projection_utils.load_camera_parameters() to project GPS positions to image pixels.",
+  "type": "object",
+  "required": ["intrinsics", "distortion", "rotation", "translation", "origin_gps"],
+  "additionalProperties": false,
+  "properties": {
+    "intrinsics": {
+      "description": "Camera intrinsic matrix K (3×3). Row-major. Encodes focal length and principal point: [[fx, 0, cx], [0, fy, cy], [0, 0, 1]]. For most cameras fx == fy (square pixels). cx/cy are typically image_width/2 and image_height/2.",
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": { "type": "number" },
+        "minItems": 3,
+        "maxItems": 3
+      },
+      "minItems": 3,
+      "maxItems": 3,
+      "examples": [
+        [
+          [1365.750227768863, 0.0, 1296.0],
+          [0.0, 1365.750227768863, 972.0],
+          [0.0, 0.0, 1.0]
+        ]
+      ]
+    },
+
+    "distortion": {
+      "description": "OpenCV lens distortion coefficients [k1, k2, p1, p2, k3]. Passed directly to cv2.projectPoints(). Negative k1 = barrel distortion; positive k1 = pincushion. p1/p2 are tangential (usually 0.0 for well-mounted lenses).",
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 4,
+      "maxItems": 8,
+      "examples": [
+        [-0.3614559666186334, 0.19810521887279448, 0.0, 0.0, -0.04844977179521971]
+      ]
+    },
+
+    "rotation": {
+      "description": "Rotation matrix R (3×3, row-major) that rotates ENU world coordinates into camera frame. Obtained from the calibration procedure (sun/moon matching). Together with 'translation', forms the extrinsic transform [R | t].",
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": { "type": "number" },
+        "minItems": 3,
+        "maxItems": 3
+      },
+      "minItems": 3,
+      "maxItems": 3
+    },
+
+    "translation": {
+      "description": "Translation vector t (length-3) in the camera/ENU frame, in metres. Forms the extrinsic transform together with 'rotation'. Loaded as a (3,1) column vector by projection_utils.",
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 3,
+      "maxItems": 3,
+      "examples": [[-2.2557907942555278, 2.030426374561324, -7.929347427348549]]
+    },
+
+    "origin_gps": {
+      "description": "WGS-84 GPS position of the ENU coordinate origin (i.e. the camera site). All aircraft positions are converted to ENU relative to this point before projection.",
+      "type": "object",
+      "required": ["lat", "lon", "alt"],
+      "additionalProperties": false,
+      "properties": {
+        "lat": {
+          "description": "Latitude in decimal degrees (positive = North).",
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "lon": {
+          "description": "Longitude in decimal degrees (positive = East).",
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "alt": {
+          "description": "Altitude above WGS-84 ellipsoid in metres.",
+          "type": "number"
+        }
+      }
+    },
+
+    "img_resolution": {
+      "description": "Native image resolution of the camera. Optional — not used by projection_utils, but useful for bounds-checking projected pixel coordinates.",
+      "type": "object",
+      "required": ["width", "height"],
+      "additionalProperties": false,
+      "properties": {
+        "width":  { "description": "Image width in pixels.",  "type": "integer", "minimum": 1 },
+        "height": { "description": "Image height in pixels.", "type": "integer", "minimum": 1 }
+      }
+    },
+
+    "timezone": {
+      "description": "IANA timezone string for the camera site. Used when parsing image filenames that encode local time (e.g. UW-Madison HH_MM_SS.trig+00.jpg). Optional.",
+      "type": "string",
+      "examples": ["America/Chicago", "America/Phoenix", "America/New_York"]
+    },
+
+    "timestamp_format": {
+      "description": "Moment.js-style format string for any site-specific timestamp parsing. Optional — only needed when the default image_data_utils parser does not cover the filename convention.",
+      "type": "string",
+      "examples": ["YYYY-MM-DD HH:mm:ss"]
+    }
+  }
+}
