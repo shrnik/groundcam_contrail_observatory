@@ -45,7 +45,7 @@ jobs:
             --registry-username ${{ secrets.ACR_USERNAME }} \
             --registry-password ${{ secrets.ACR_PASSWORD }} \
             --os-type Linux \
-            --cpu 2 --memory 4 \
+            --cpu 1 --memory 2 \
             --restart-policy Always \
             --environment-variables \
               AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
