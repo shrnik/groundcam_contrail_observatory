@@ -70,21 +70,24 @@ async def main(config_path: str = "live/config.yaml") -> None:
         """Fetch new frames every poll_interval_s seconds and run detection."""
         interval = cam.config["poll_interval_s"]
         while True:
-            frames = await cam.fetch_new_frames()
-            for ts, image_bytes in frames:
-                results, annotated_img = proc.process_frame(ts, image_bytes, pings)
-                image_url = None
-                if any(r[5] for r in results) and annotated_img is not None:
-                    try:
-                        image_url = await asyncio.get_event_loop().run_in_executor(
-                            None,
-                            azure_upload.upload_annotated_frame,
-                            annotated_img, ts, cam.side, config,
-                        ) or ""
-                    except Exception as e:
-                        logger.warning(f"[main] failed to upload frame for {ts}: {e}")
-                await alert_cache.check(results, annotated_img, cam, config, image_url=image_url)
-                analytics.log(results, output_dir, camera_name=cam.name, image_url=image_url)
+            try:
+                frames = await cam.fetch_new_frames()
+                for ts, image_bytes in frames:
+                    results, annotated_img = proc.process_frame(ts, image_bytes, pings)
+                    image_url = None
+                    if any(r[5] for r in results) and annotated_img is not None:
+                        try:
+                            image_url = await asyncio.get_event_loop().run_in_executor(
+                                None,
+                                azure_upload.upload_annotated_frame,
+                                annotated_img, ts, cam.side, config,
+                            ) or ""
+                        except Exception as e:
+                            logger.warning(f"[main] failed to upload frame for {ts}: {e}")
+                    await alert_cache.check(results, annotated_img, cam, config, image_url=image_url)
+                    analytics.log(results, output_dir, camera_name=cam.name, image_url=image_url)
+            except Exception as e:
+                logger.error(f"[main] image_task error for {cam.side}, retrying: {e}")
             await asyncio.sleep(interval)
 
     logger.info(f"[main] starting live contrail detection pipeline with {len(cameras)} camera(s)")

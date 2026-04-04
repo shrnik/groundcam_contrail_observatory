@@ -98,7 +98,7 @@ class Camera:
         #         filenames = straggler_files + filenames
 
         if not filenames:
-            logger.warning(f"[camera/{self.camera_name}] no frames found at {url}")
+            logger.warning(f"[camera/{self.side}] no frames found at {url}")
             return []
 
         if self._last_processed_filename:
